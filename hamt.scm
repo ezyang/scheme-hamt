@@ -10,7 +10,7 @@
   ;; alternative hash function guaranteed to return a fixnum.  Note
   ;; that we don't use the fixnum space as efficiently as possible;
   ;; in particular no negative numbers are generated
-  (modulo (hash x) (+ fixnum-max 1))) ;; I hope this gets optimized
+  (eq-hash x)) ;; I hope this gets optimized
 
 (define (popcount x)
   (let loop ((x x) (c 0))
@@ -57,7 +57,7 @@
   (lookup (hamt-hash rk) rk 0 t success-continuation fail-continuation))
 
 (define (insert kx rkx s x t)
-  (cond ((hamt-empty? t) (make-hamt-leaf kx x))
+  (cond ((hamt-empty? t) (make-hamt-leaf kx rkx x))
         ((hamt-leaf? t)
          (let ((ky  (hamt-leaf-key t))
                (rky (hamt-leaf-real-key t))
@@ -95,4 +95,4 @@
         )
   )
 
-(define (hamt-insert k v t) (insert (hamt-hash k) k 0 v t))
+(define (hamt-insert rk v t) (insert (hamt-hash rk) rk 0 v t))
