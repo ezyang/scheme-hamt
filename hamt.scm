@@ -1,5 +1,8 @@
 (declare (usual-integrations))
 
+;; This current implementation only supports eq? hash-tables.
+;; This should be made more flexible with some sort of template.
+
 (define fixnum-max
     (let loop ((n 1))
        (if (fix:fixnum? n)
@@ -10,7 +13,7 @@
   ;; alternative hash function guaranteed to return a fixnum.  Note
   ;; that we don't use the fixnum space as efficiently as possible;
   ;; in particular no negative numbers are generated
-  (eq-hash x)) ;; I hope this gets optimized
+  (eq-hash x))
 
 (define (popcount x)
   (let loop ((x x) (c 0))
@@ -32,7 +35,7 @@
 (define (lookup k rk s t sc fc)
   (cond ((hamt-empty? t) (fc))
         ((hamt-leaf? t)
-         (if (fix:= (hamt-leaf-key t) k)
+         (if (and (fix:= (hamt-leaf-key t) k) (eq? (hamt-leaf-real-key t) rk))
            (sc (hamt-leaf-value t))
            (fc)))
         ((hamt-bitmap? t)
@@ -96,3 +99,44 @@
   )
 
 (define (hamt-insert rk v t) (insert (hamt-hash rk) rk 0 v t))
+
+(define (delete kx rkx s t)
+  (cond ((hamt-empty? t) t)
+        ((hamt-leaf? t)
+         (let ((ky (hamt-leaf-key t))
+               (rky (hamt-leaf-real-key t)))
+           (if (and (fix:= kx ky) (eq? rkx rky))
+             (make-hamt-empty)
+             t)))
+        ((hamt-bitmap? t)
+         (let* ((b (hamt-bitmap-bitmap t))
+                (v (hamt-bitmap-vector t))
+                (m (mask kx s))
+                (i (mask-index b m)))
+           (if (fix:= (fix:and b m) 0)
+             t
+             (let* ((st (vector-ref v i))
+                    (stp (delete kx rkx (+ s bits-per-subkey) st)))
+               (if (hamt-empty? stp)
+                 (if (fix:= (popcount b) 1)
+                   stp ;; (make-hamt-empty)
+                   (make-hamt-bitmap
+                     (fix:and (fix:not m) b)
+                     (vector-append (vector-head v i) (vector-tail v (fix:+ i 1)))))
+                 (if (eq? stp st)
+                   t
+                   (let ((vp (vector-copy v)))
+                     (vector-set! vp i stp)
+                     (make-hamt-bitmap b vp))))))))
+        ((hamt-collision? t)
+         (let ((alist (list-copy (hamt-collision-alist t))))
+           (del-assq! rkx alist)
+           (if (null? alist)
+             (make-hamt-empty)
+             (if (null? (cdr alist))
+               (make-hamt-leaf kx (first (car alist)) (second (car alist)))
+               (make-hamt-collision kx alist)))))
+        (else (error "invalid tree passed to delete"))
+    ))
+
+(define (hamt-delete rk t) (delete (hamt-hash rk) rk 0 t))
