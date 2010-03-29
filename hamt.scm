@@ -1,5 +1,17 @@
 (declare (usual-integrations))
 
+(define fixnum-max
+    (let loop ((n 1))
+       (if (fix:fixnum? n)
+           (loop (* n 2))
+           (- n 1))))
+
+(define (hamt-hash x)
+  ;; alternative hash function guaranteed to return a fixnum.  Note
+  ;; that we don't use the fixnum space as efficiently as possible;
+  ;; in particular no negative numbers are generated
+  (modulo (hash x) (+ fixnum-max 1))) ;; I hope this gets optimized
+
 (define (popcount x)
   (let loop ((x x) (c 0))
     (if (fix:zero? x)
@@ -8,15 +20,16 @@
 
 (define-structure hamt-empty)
 (define-structure hamt-bitmap bitmap vector) ;; bitmap vector
-(define-structure hamt-leaf key value) ;; key value
+(define-structure hamt-leaf key real-key value) ;; key value
+(define-structure hamt-collision key alist) ;; key value
 
+(define bits-per-subkey 4)
 (define subkey-mask #xF)
 (define (mask-index b m) (popcount (fix:and b (fix:-1+ m))))
 (define (mask k s) (fix:lsh 1 (subkey k s)))
 (define (subkey k s) (fix:and (fix:lsh k (fix:- 0 s)) subkey-mask))
-(define bits-per-subkey 4)
 
-(define (lookup k s t sc fc)
+(define (lookup k rk s t sc fc)
   (cond ((hamt-empty? t) (fc))
         ((hamt-leaf? t)
          (if (fix:= (hamt-leaf-key t) k)
@@ -27,25 +40,33 @@
                (b (hamt-bitmap-bitmap t)))
            (if (fix:= (fix:and b m) 0)
              (fc)
-             (lookup k
+             (lookup k rk
                      (fix:+ s bits-per-subkey)
                      (vector-ref (hamt-bitmap-vector t)
                                  (mask-index b m))
                      sc
                      fc))))
+        ((hamt-collision? t)
+         (let ((r (assq rk (hamt-collision-alist t))))
+           (if (false? r)
+             (fc)
+             (sc (second r)))))
         (else (error "invalid datatype passed to lookup"))))
 
-(define (hamt-lookup k t success-continuation fail-continuation)
-  (lookup k 0 t success-continuation fail-continuation))
+(define (hamt-lookup rk t success-continuation fail-continuation)
+  (lookup (hamt-hash rk) rk 0 t success-continuation fail-continuation))
 
-(define (insert kx s x t)
+(define (insert kx rkx s x t)
   (cond ((hamt-empty? t) (make-hamt-leaf kx x))
         ((hamt-leaf? t)
-         (let ((ky (hamt-leaf-key t))
-               (y  (hamt-leaf-value t)))
+         (let ((ky  (hamt-leaf-key t))
+               (rky (hamt-leaf-real-key t))
+               (y   (hamt-leaf-value t)))
            (if (fix:= ky kx)
-             (make-hamt-leaf kx x)
-             (insert kx s x (make-hamt-bitmap (mask ky y) (vector t))))
+             (if (eq? rky rkx)
+               (make-hamt-leaf kx rkx x)
+               (insert kx rkx s x (make-hamt-collision kx (list (list rky y)))))
+             (insert kx rkx s x (make-hamt-bitmap (mask ky y) (vector t))))
            ))
         ((hamt-bitmap? t)
          (let* ((b (hamt-bitmap-bitmap t))
@@ -53,21 +74,25 @@
                 (m (mask kx s))
                 (i (mask-index b m)))
            (if (fix:= (fix:and b m) 0)
-             (let* ((l (make-hamt-leaf kx x))
+             (let* ((l (make-hamt-leaf kx rkx x))
                     (vp (vector-append (vector-head v i) (vector l) (vector-tail v i)))
                     (bp (fix:or b m)))
                (make-hamt-bitmap bp vp)
                )
              (let* ((st (vector-ref v i))
-                    (stp (insert kx (+ s bits-per-subkey) x st))
+                    (stp (insert kx rkx (+ s bits-per-subkey) x st))
                     (vp (vector-copy v)))
                (vector-set! vp i stp)
                (make-hamt-bitmap b vp)
                )
              )
            ))
+        ((hamt-collision? t)
+         (let ((alist (list-copy (hamt-collision-alist t))))
+           (del-assq! rkx alist)
+           (make-hamt-collision kx (cons (list rkx x) alist))))
         (else (error "invalid datatype passed to insert"))
         )
   )
 
-(define (hamt-insert k v t) (insert k 0 v t))
+(define (hamt-insert k v t) (insert (hamt-hash k) k 0 v t))

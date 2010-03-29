@@ -2,12 +2,6 @@
 
 (load "hamt")
 
-(define fixnum-max
-    (let loop ((n 1))
-       (if (fix:fixnum? n)
-           (loop (* n 2))
-           (- n 1))))
-
 (define (mk-random-list k) (make-initialized-list k (lambda (x) (random fixnum-max))))
 
 (define (printer run-time gc-time real-time)
