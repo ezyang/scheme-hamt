@@ -9,11 +9,17 @@
   ;; in particular no negative numbers are generated
   (eq-hash x))
 
-(define-integrable (popcount x)
-  (let loop ((x x) (c 0))
-    (if (fix:zero? x)
-    c
-    (loop (fix:lsh x -1) (if (fix:zero? (fix:and 1 x)) c (fix:1+ c))))))
+;; liberal guess at 25-bits, we have to truncate to keep everything
+;; fixnum
+(define-integrable m1 #x1555555)
+(define-integrable m2 #x1333333)
+(define-integrable m4 #x10F0F0F)
+(define (popcount x)
+  (let* ((x (fix:- x (fix:and (fix:lsh x -1) m1)))
+         (x (fix:+ (fix:and x m2) (fix:and (fix:lsh x -2) m2)))
+         (x (fix:and (fix:+ x (fix:lsh x -4)) m4))
+         (x (fix:+ x (fix:lsh x -8))))
+    (fix:and (fix:+ x (fix:lsh x -16)) #x3f)))
 
 (define-structure hamt-empty)
 (define-structure hamt-bitmap bitmap vector) ;; bitmap vector
@@ -24,18 +30,14 @@
 
 (define-integrable hamt/bits-per-subkey 4)
 (define-integrable hamt/subkey-mask #xF)
-(define-integrable (hamt/mask-index b m) (popcount (fix:and b (fix:-1+ m))))
-(define-integrable (hamt/mask k s) (fix:lsh 1 (hamt/subkey k s)))
+(define (hamt/mask-index b m) (popcount (fix:and b (fix:-1+ m))))
+(define (hamt/mask k s) (fix:lsh 1 (hamt/subkey k s)))
 (define-integrable (hamt/subkey k s) (fix:and (fix:lsh k (fix:- 0 s)) hamt/subkey-mask))
 
 (define make-hamt make-hamt-empty)
 
 (define (%lookup k rk s t sc fc)
-  (cond ((hamt-empty? t) (fc))
-        ((hamt-leaf? t)
-         (if (and (fix:= (hamt-leaf-key t) k) (eq? (hamt-leaf-real-key t) rk))
-           (sc (hamt-leaf-value t))
-           (fc)))
+  (cond
         ((hamt-bitmap? t)
          (let ((m (hamt/mask k s))
                (b (hamt-bitmap-bitmap t)))
@@ -47,6 +49,11 @@
                                  (hamt/mask-index b m))
                      sc
                      fc))))
+        ((hamt-leaf? t)
+         (if (and (fix:= (hamt-leaf-key t) k) (eq? (hamt-leaf-real-key t) rk))
+           (sc (hamt-leaf-value t))
+           (fc)))
+        ((hamt-empty? t) (fc))
         ((hamt-collision? t)
          (let ((r (assq rk (hamt-collision-alist t))))
            (if (false? r)
@@ -55,17 +62,7 @@
         (else (error "invalid datatype passed to lookup"))))
 
 (define (%insert kx rkx s x t)
-  (cond ((hamt-empty? t) (make-hamt-leaf kx rkx x))
-        ((hamt-leaf? t)
-         (let ((ky  (hamt-leaf-key t))
-               (rky (hamt-leaf-real-key t))
-               (y   (hamt-leaf-value t)))
-           (if (fix:= ky kx)
-             (if (eq? rky rkx)
-               (make-hamt-leaf kx rkx x)
-               (%insert kx rkx s x (make-hamt-collision kx (list (list rky y)))))
-             (%insert kx rkx s x (make-hamt-bitmap (hamt/mask ky y) (vector t))))
-           ))
+  (cond
         ((hamt-bitmap? t)
          (let* ((b (hamt-bitmap-bitmap t))
                 (v (hamt-bitmap-vector t))
@@ -85,6 +82,17 @@
                )
              )
            ))
+        ((hamt-leaf? t)
+         (let ((ky  (hamt-leaf-key t))
+               (rky (hamt-leaf-real-key t))
+               (y   (hamt-leaf-value t)))
+           (if (fix:= ky kx)
+             (if (eq? rky rkx)
+               (make-hamt-leaf kx rkx x)
+               (%insert kx rkx s x (make-hamt-collision kx (list (list rky y)))))
+             (%insert kx rkx s x (make-hamt-bitmap (hamt/mask ky y) (vector t))))
+           ))
+        ((hamt-empty? t) (make-hamt-leaf kx rkx x))
         ((hamt-collision? t)
          (let ((alist (list-copy (hamt-collision-alist t))))
            (del-assq! rkx alist)

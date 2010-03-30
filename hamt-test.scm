@@ -40,8 +40,7 @@
          (lambda (m k v) (cons (list k v) m))
          (lambda () '()))
 |#
-;;(harness (lambda (m x sc fc) (let ((r (wt-tree/lookup m x #f))) (if (false? r) (fc) (sc r))))
-(harness (lambda (m x sc fc) (wt-tree/lookup m x 0))
+(harness (lambda (m x sc fc) (let ((r (wt-tree/lookup m x #f))) (if (false? r) (fc) (sc r))))
          wt-tree/add
          (lambda () (make-wt-tree (make-wt-tree-type
                                     (lambda (x y) (fix:< (eq-hash x)
