@@ -1,0 +1,5 @@
+- Build a usable interface
+- Add tests for correctness
+- Make sure keys are weakly held
+- Add support for eqv?, equals?, strings
+- Figure out at what point these trees win out over association lists

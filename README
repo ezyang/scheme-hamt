@@ -1,0 +1,55 @@
+Hash Array Mapped Tries in MIT Scheme
+-------------------------------------
+
+Hash Array Mapped Tries (abbreviated as HAMTs) are a data-structure that
+offer extremely fast persistent mappings for keys that map onto
+fixnum's; this frequently means eq? style associations.  More details
+can be found by consulting Philip Bagwell's paper on the data structure.
+[1]
+
+- procedure: make-hamt
+
+    Creates and returns a newly allocated hash array mapped trie.  The
+    trie contains no associations.  The resulting trie uses eq? to
+    determine if keys are equal.
+
+- procedure: hamt? object
+
+    Returns #t if object is a hash array mapped trie, otherwise returns
+    #f.
+
+- procedure: hamt/insert hamt key datum
+
+    Returns a new trie containing all the associations in hamt as well
+    as the association of datum with key.  If hamt already had an
+    association for key, the new association overwrites the old.  The
+    average time required by this operation is bounded by the logarithm
+    of the number of associations in the trie.
+
+- procedure: hamt/get hamt key default
+
+    Returns the datum associated with key in hamt. If there is no
+    association for key, default is returned. The average time required
+    by this operation is bounded by the logarithm of the number of
+    associations in the trie.
+
+- procedure: hamt/delete hamt key
+
+    Returns a new tree containing all the associations in hamt, except
+    that if hamt contains an association for key, it is removed from the
+    result. The average time required by this operation is proportional
+    to the logarithm of the number of associations in the trie.
+
+- procedure: hamt/lookup hamt key if-found if-not-found
+
+    If-found must be a procedure of one argument, and if-not-found must
+    be a procedure of no arguments.  If hamt contains an assocation for
+    key, if-found is invoked on the datum of the assocation.  Otherwise,
+    if-not-found is invoked with no arguments.  In either case, the
+    result yielded by the invoked procedure is returned as the result of
+    hamt/lookup (hamt/lookup reduces into the invoked procedure, i.e.
+    calls it tail-recursively). The average time required by this
+    operation is bounded by the logarithm of the number of associations
+    in the trie.
+
+[1] http://lampwww.epfl.ch/papers/idealhashtrees.pdf
