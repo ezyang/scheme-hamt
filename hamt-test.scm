@@ -11,11 +11,11 @@
 
 (define (printer run-time gc-time real-time)
   (begin
-     (write (internal-time/ticks->seconds run-time))
-     (write-char #\,)
-     (write (internal-time/ticks->seconds gc-time))
-     (write-char #\,)
-     (write (internal-time/ticks->seconds real-time))
+     ;(write (* 1000 (internal-time/ticks->seconds run-time)))
+     ;(write-char #\,)
+     ;(write (* 1000 (internal-time/ticks->seconds gc-time)))
+     ;(write-char #\,)
+     (write real-time)
      (newline)
      ))
 
@@ -56,9 +56,9 @@
 |#
 
 (define (harness name g-lookup g-insert g-empty)
-  ;(for-data-sets (string-append name ",inserts") (lambda (x) (main-insert g-insert g-empty x)))
-  (for-data-sets (string-append name ",lookup-hit") (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
-  (for-data-sets (string-append name ",lookup-miss") (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
+  ;(for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
+  ;(for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
+  (for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
   )
 
 #|
