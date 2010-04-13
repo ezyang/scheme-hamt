@@ -24,7 +24,7 @@
 
 (define (main-insert g-insert g-empty inserts)
   (let ((vals (mk-random-list inserts)))
-    (with-timings (lambda () (make-map g-insert g-empty vals)) printer)
+    (with-timings (lambda () (let loop ((i 16000)) (make-map g-insert g-empty vals) (if (> i 0) (loop (- i 1))))) printer)
     )
   )
 
@@ -56,9 +56,9 @@
 |#
 
 (define (harness name g-lookup g-insert g-empty)
-  ;(for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
+  (for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
   ;(for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
-  (for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
+  ;(for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
   )
 
 #|
