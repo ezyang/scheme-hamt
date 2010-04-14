@@ -24,7 +24,7 @@
 
 (define (main-insert g-insert g-empty inserts)
   (let ((vals (mk-random-list inserts)))
-    (with-timings (lambda () (let loop ((i 16000)) (make-map g-insert g-empty vals) (if (> i 0) (loop (- i 1))))) printer)
+    (with-timings (lambda () (let loop ((i 4000)) (make-map g-insert g-empty vals) (if (> i 0) (loop (- i 1))))) printer)
     )
   )
 
@@ -41,7 +41,7 @@
               select-vals))
           printer))))
 
-(define main-lookup-hit (make-lookup (lambda (vals lookups) (list-head (circular-list vals) lookups))))
+(define main-lookup-hit (make-lookup (lambda (vals lookups) (list-head (apply circular-list vals) lookups))))
 (define main-lookup-miss (make-lookup (lambda (vals lookups) (mk-random-list lookups))))
 
 #|
@@ -56,9 +56,9 @@
 |#
 
 (define (harness name g-lookup g-insert g-empty)
-  (for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
+  ;(for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
   ;(for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
-  ;(for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
+  (for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
   )
 
 #|
@@ -80,6 +80,7 @@
         (proc i))
     (iota 60 1)))
 
+(harness "prb-tree" prb-tree/lookup prb-tree/insert prb-tree/empty)
 (harness "assoc"
          (lambda (m x sc fc) (let ((r (assq x m)))
                                (if (false? r)

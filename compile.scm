@@ -1,2 +1,3 @@
 (cf "hamt")
-(cf "hamt-test")
+(cf "prb-tree")
+(cf "perf-test")
