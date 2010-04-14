@@ -8,6 +8,7 @@
            (- n 1))))
 
 (define (mk-random-list k) (make-initialized-list k (lambda (x) (random fixnum-max))))
+(define (mk-linear-list k) (make-initialized-list k (lambda (x) x)))
 
 (define (printer run-time gc-time real-time)
   (begin
@@ -29,9 +30,9 @@
     )
   )
 
-(define (make-lookup make-select-vals)
+(define (make-lookup make-vals make-select-vals)
   (lambda (g-insert g-empty g-lookup inserts lookups)
-      (let* ((vals (mk-random-list inserts))
+      (let* ((vals (make-vals inserts))
              (select-vals (make-select-vals vals lookups))
              (m (make-map g-insert g-empty vals)))
         (with-timings
@@ -42,8 +43,23 @@
               select-vals))
           printer))))
 
-(define main-lookup-hit (make-lookup (lambda (vals lookups) (list-head (apply circular-list vals) lookups))))
-(define main-lookup-miss (make-lookup (lambda (vals lookups) (mk-random-list lookups))))
+(define main-lookup-hit (make-lookup
+                          mk-random-list
+                          (lambda (vals lookups)
+                            (list-head (apply circular-list vals) lookups))))
+(define main-lookup-miss (make-lookup
+                           mk-random-list
+                           (lambda (vals lookups)
+                             (mk-random-list lookups))))
+
+(define main-dense-lookup-hit (make-lookup
+                                mk-linear-list
+                                (lambda (vals lookups)
+                                  (list-head (apply circular-list vals) lookups))))
+(define main-dense-lookup-miss (make-lookup
+                                mk-linear-list
+                                (lambda (vals lookups)
+                                  (mk-random-list lookups))))
 
 #|
 (define (main g-lookup g-insert g-empty i)
@@ -57,9 +73,11 @@
 |#
 
 (define (harness name g-lookup g-insert g-empty)
-  (for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
+  ;(for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
   ;(for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
   ;(for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
+  ;(for-data-sets name (lambda (x) (main-dense-lookup-hit g-insert g-empty g-lookup x 128000)))
+  (for-data-sets name (lambda (x) (main-dense-lookup-miss g-insert g-empty g-lookup x 128000)))
   )
 
 #|

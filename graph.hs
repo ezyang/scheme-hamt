@@ -12,8 +12,8 @@ import qualified Data.Map as Map
 main = do
     args <- getArgs
     case args of
-        x:y:z:[] -> run x y z
-        otherwise -> putStrLn "Usage: runhaskell graph.hs NAME FILENAME.csv OUT.pdf"
+        x:[] -> run x (x++".csv") (x++".pdf")
+        otherwise -> putStrLn "Usage: runhaskell graph.hs NAME"
 
 run name filename out = do
     r <- parseCSVFromFile filename
