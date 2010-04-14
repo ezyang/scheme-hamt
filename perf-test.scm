@@ -57,8 +57,8 @@
 
 (define (harness name g-lookup g-insert g-empty)
   ;(for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
-  ;(for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
-  (for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
+  (for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
+  ;(for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
   )
 
 #|
@@ -96,4 +96,9 @@
                                     (lambda (x y) (fix:< (eq-hash x)
                                                          (eq-hash y)))))))
 (harness "hamt" hamt/lookup hamt/insert make-hamt)
+
+(harness "hash-table"
+         hash-table/lookup
+         (lambda (m k v) (hash-table/put! m k v) m)
+         make-strong-eq-hash-table)
 
