@@ -23,8 +23,9 @@
     (fold-left (lambda (m x) (g-insert m x x)) (g-empty) vals))
 
 (define (main-insert g-insert g-empty inserts)
-  (let ((vals (mk-random-list inserts)))
-    (with-timings (lambda () (let loop ((i 4000)) (make-map g-insert g-empty vals) (if (> i 0) (loop (- i 1))))) printer)
+  (let* ((vals (mk-random-list inserts))
+         (m (make-map g-insert g-empty (cdr vals))))
+    (with-timings (lambda () (let loop ((i 128000)) (g-insert m (car vals) (car vals)) (if (> i 0) (loop (- i 1))))) printer)
     )
   )
 
@@ -56,8 +57,8 @@
 |#
 
 (define (harness name g-lookup g-insert g-empty)
-  ;(for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
-  (for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
+  (for-data-sets name (lambda (x) (main-insert g-insert g-empty x)))
+  ;(for-data-sets name (lambda (x) (main-lookup-hit g-insert g-empty g-lookup x 128000)))
   ;(for-data-sets name (lambda (x) (main-lookup-miss g-insert g-empty g-lookup x 128000)))
   )
 
@@ -97,6 +98,7 @@
                                                          (eq-hash y)))))))
 (harness "hamt" hamt/lookup hamt/insert make-hamt)
 
+;; slightly incorrect
 (harness "hash-table"
          hash-table/lookup
          (lambda (m k v) (hash-table/put! m k v) m)
